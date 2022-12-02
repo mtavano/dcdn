@@ -2,17 +2,18 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 
+	"github.com/mtavano/dcdn/internal/logger"
 	"github.com/mtavano/dcdn/internal/network"
 )
 
 func main() {
-	log.Println("[NODE] Starting")
+	log := logger.New("NODE")
+	log.Info("Starting")
 
 	// Parse flags
 	hostIP := flag.String("host-address", "0.0.0.0", "Default address to run node")
@@ -31,8 +32,8 @@ func main() {
 	defer node.NetworkHost.Close()
 	defer node.MdnsService.Close()
 
-	log.Printf("[NODE] Runing with address: %s", node.NetworkHost.Addrs())
-	log.Printf("[NODE] with node ID: %s", node.NetworkHost.ID())
+	log.Infof("Runing with address: %s", node.NetworkHost.Addrs())
+	log.Infof("with node ID: %s", node.NetworkHost.ID())
 
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, syscall.SIGKILL, syscall.SIGINT)
