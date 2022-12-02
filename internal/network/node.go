@@ -3,24 +3,38 @@ package network
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+	"github.com/mtavano/dcdn/internal/logger"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 )
 
-const dcdnNs = "DCDN_peers"
+const (
+	// public const
+	Protocol  = "/dcdn/0.0.1"
+	Namespace = "NETWORK"
 
-const Protocol = "/dcdn/0.0.1"
+	//private const
+	dcdnNs = "DCDN_peers"
+)
+
+type Node struct {
+	NetworkHost host.Host
+	MdnsService mdns.Service
+
+	connectedPeers map[string]*peer.AddrInfo
+	logger         *logger.Logger
+}
 
 func NewNode(config *NodeConfig) (*Node, error) {
+	log := logger.New(Namespace)
+
 	listenAddress := fmt.Sprintf("/ip4/%s/tcp/%s", config.IP, config.Port)
 	address := libp2p.ListenAddrStrings(listenAddress)
-
 	host, err := libp2p.New(address)
 	if err != nil {
 		return nil, errors.Wrap(err, "network: NewNode libp2p.New error")
@@ -29,18 +43,15 @@ func NewNode(config *NodeConfig) (*Node, error) {
 	mdnsService := mdns.NewMdnsService(
 		host,
 		dcdnNs,
-		&discoveryveryNotifee{},
+		&discoveryveryNotifee{logger: log},
 	)
 
 	return &Node{
-		NetworkHost: host,
-		MdnsService: mdnsService,
+		NetworkHost:    host,
+		MdnsService:    mdnsService,
+		connectedPeers: make(map[string]*peer.AddrInfo),
+		logger:         log,
 	}, nil
-}
-
-type Node struct {
-	NetworkHost host.Host
-	MdnsService mdns.Service
 }
 
 func (n *Node) ConnectWithPeers(peersAddresses []string) error {
@@ -57,19 +68,22 @@ func (n *Node) ConnectWithPeers(peersAddresses []string) error {
 
 		err = n.NetworkHost.Connect(context.Background(), *peerAddrInfo)
 		if err != nil {
-			log.Printf("[NETWORK] Could not connect peer to %s", peerAddrInfo.String())
+			n.logger.Infof("Could not connect peer to %s", peerAddrInfo.String())
 			continue
 		}
 
-		log.Printf("[NETWORK] Connected to peer %s", peerAddrInfo.String())
+		n.connectedPeers[peerAddrInfo.String()] = peerAddrInfo
+		n.logger.Infof("Connected to peer %s", peerAddrInfo.String())
 	}
 
 	return nil
 }
 
-type discoveryveryNotifee struct{}
+type discoveryveryNotifee struct {
+	logger *logger.Logger
+}
 
-func (n *discoveryveryNotifee) HandlePeerFound(peerInfo peer.AddrInfo) {
+func (dn *discoveryveryNotifee) HandlePeerFound(peerInfo peer.AddrInfo) {
 	// TODO: add logic here to store info about peers connected
-	log.Printf("[NETWORK] Found peer %s", peerInfo.String())
+	dn.logger.Infof("Found peer %s", peerInfo.String())
 }
