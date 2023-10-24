@@ -10,6 +10,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 )
 
+const (
+	ProtocolDataSharing = "data-sharing"
+)
+
 func (n *Node) HandleStream(s network.Stream) {
 	n.logger.Infof("Stream received by peer %s", s.ID)
 
@@ -52,5 +56,5 @@ func readData(rw *bufio.ReadWriter) {
 }
 
 func (n *Node) SetupStreamHandler(ctx context.Context, handler network.StreamHandler) {
-	n.NetworkHost.SetStreamHandler(ctx, handler)
+	n.NetworkHost.SetStreamHandler(ProtocolDataSharing, handler)
 }

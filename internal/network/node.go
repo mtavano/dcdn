@@ -15,11 +15,11 @@ import (
 
 const (
 	// public const
-	Protocol  = "/dcdn/0.0.1"
+	Protocol  = "/protocol-alpha/1.0.0"
 	Namespace = "NETWORK"
 
 	//private const
-	dcdnNs = "DCDN_peers"
+	namespace = "PROTOCOL-ALPA-PEERS"
 )
 
 type Node struct {
@@ -28,6 +28,7 @@ type Node struct {
 
 	connectedPeers map[string]*peer.AddrInfo
 	logger         *logger.Logger
+	port           string
 }
 
 func NewNode(config *NodeConfig) (*Node, error) {
@@ -42,7 +43,7 @@ func NewNode(config *NodeConfig) (*Node, error) {
 
 	mdnsService := mdns.NewMdnsService(
 		host,
-		dcdnNs,
+		namespace,
 		&discoveryveryNotifee{logger: log},
 	)
 
@@ -51,6 +52,7 @@ func NewNode(config *NodeConfig) (*Node, error) {
 		MdnsService:    mdnsService,
 		connectedPeers: make(map[string]*peer.AddrInfo),
 		logger:         log,
+		port:           config.Port,
 	}, nil
 }
 
@@ -58,22 +60,26 @@ func (n *Node) ConnectWithPeers(peersAddresses []string) error {
 	for _, peerAddr := range peersAddresses {
 		peerMultiAddr, err := multiaddr.NewMultiaddr(peerAddr)
 		if err != nil {
-			return errors.Wrap(err, "network: Node.ConnectWithPeers multiaddr.NewMultiaddr error")
+			err = errors.Wrap(err, "network: Node.ConnectWithPeers multiaddr.NewMultiaddr error")
+			n.logger.Infof("%s  with peer %s", err.Error(), peerAddr)
+			return err
 		}
 
 		peerAddrInfo, err := peer.AddrInfoFromP2pAddr(peerMultiAddr)
 		if err != nil {
-			return errors.Wrap(err, "network: Node.ConnectWithPeers peer.AddrInfoFromP2pAddr error")
+			err = errors.Wrap(err, "network: Node.ConnectWithPeers peer.AddrInfoFromP2pAddr error")
+			n.logger.Infof("%s  with peer %s", err.Error(), peerAddr)
+			return err
 		}
 
 		err = n.NetworkHost.Connect(context.Background(), *peerAddrInfo)
 		if err != nil {
-			n.logger.Infof("Could not connect peer to %s", peerAddrInfo.String())
-			continue
+			err = errors.Wrap(err, "network: Node.ConnectWithPeers n.NetworkHost.Connect error")
+			n.logger.Infof("%s  with peer %s", err.Error(), peerAddr)
+			return err
 		}
 
 		n.connectedPeers[peerAddrInfo.String()] = peerAddrInfo
-		n.logger.Infof("Connected to peer %s", peerAddrInfo.String())
 	}
 
 	return nil
