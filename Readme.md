@@ -2,5 +2,4 @@
 
 ---
 
-DCDN is a decentralized content delivery network built on top of libp2p and ipld.
-
+Decentralized pocket network built on top of libp2p
